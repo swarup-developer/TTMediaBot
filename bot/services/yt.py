@@ -1,14 +1,14 @@
 from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 if TYPE_CHECKING:
     from bot import Bot
 
 from yt_dlp import YoutubeDL
 from yt_dlp.downloader import get_suitable_downloader
-from youtubesearchpython import VideosSearch
-
 from bot.config.models import YtModel
 
 from bot.player.enums import TrackType
@@ -28,6 +28,8 @@ class YtService(_Service):
         self.warning_message = ""
         self.help = ""
         self.hidden = False
+        API_KEY = 'AIzaSyAXucwMgPOVvpNX40KRFmC-mRrD9PrMkes'
+        self.youtube_api = build("youtube", "v3", developerKey=API_KEY)
 
     def initialize(self):
         self._ydl_config = {
@@ -35,6 +37,7 @@ class YtService(_Service):
             "format": "m4a/bestaudio/best[protocol!=m3u8_native]/best",
             "socket_timeout": 5,
             "logger": logging.getLogger("root"),
+            "cookiefile": "cookies.txt",
         }
 
     def download(self, track: Track, file_path: str) -> None:
@@ -93,16 +96,33 @@ class YtService(_Service):
             return [
                 Track(service=self.name, url=url, name=title, format=format, type=type, extra_info=stream)
             ]
-
+    
     def search(self, query: str) -> List[Track]:
-        search = VideosSearch(query, limit=30).result()
-        if search["result"]:
+        try:
+            search_response = self.youtube_api.search().list(
+                q=query,
+                part="snippet",
+                maxResults=10
+            ).execute()
+
             tracks: List[Track] = []
-            for video in search["result"]:
-                track = Track(
-                    service=self.name, url=video["link"], type=TrackType.Dynamic
-                )
-                tracks.append(track)
-            return tracks
-        else:
-            raise errors.NothingFoundError("")
+            for search_result in search_response["items"]:
+                if 'videoId' in search_result['id']:
+                    video_url = f"https://www.youtube.com/watch?v={search_result['id']['videoId']}"
+                    track = Track(
+                        service=self.name,
+                        url=video_url,
+                        name=search_result["snippet"]["title"],
+                        type=TrackType.Dynamic
+                    )
+                    tracks.append(track)
+
+            if tracks:
+                return tracks
+            else:
+                raise errors.NothingFoundError("No videos found.")
+        
+        except HttpError as e:
+            raise errors.NothingFoundError(f"Error searching videos: {str(e)}")
+        except KeyError as e:
+            raise errors.NothingFoundError(f"Error processing response: {str(e)}")
