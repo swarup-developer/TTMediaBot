@@ -10,7 +10,6 @@ from bot import utils
 if TYPE_CHECKING:
     from bot.services import Service
 
-
 class Track:
     format: str
     type: TrackType
@@ -66,6 +65,13 @@ class Track:
         self._url = value
 
     @property
+    def original_url(self) -> str:
+        if self.extra_info and "webpage_url" in self.extra_info:
+            return self.extra_info["webpage_url"]
+        return self._url  # fallback ke URL biasa
+
+
+    @property
     def name(self) -> str:
         with self._lock:
             if not self._name:
@@ -83,10 +89,10 @@ class Track:
             return {"name": None, "url": ""}
 
     def get_raw(self) -> Track:
-        if hasattr(self, "_original_track"):
-            return self._original_track
-        else:
-            return self
+        raw = copy.deepcopy(self._original_track) if hasattr(self, "_original_track") else copy.deepcopy(self)
+        if raw.extra_info and "webpage_url" in raw.extra_info:
+            raw.url = raw.extra_info["webpage_url"]
+        return raw
 
     def __bool__(self):
         if self.service or self.url:
