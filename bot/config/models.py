@@ -10,7 +10,7 @@ class GeneralModel(BaseModel):
     blocked_commands: List[str] = []
     delete_uploaded_files_after: int = 300
     time_format: str = r"%H:%M"
-
+    start_commands: List[str] = []
 
 class SoundDevicesModel(BaseModel):
     output_device: int = 0
@@ -24,7 +24,6 @@ class PlayerModel(BaseModel):
     volume_fading_interval: float = 0.025
     seek_step: int = 5
     player_options: Dict[str, Any] = {}
-
 
 class TeamTalkUserModel(BaseModel):
     admins: List[str] = ["admin"]
@@ -63,6 +62,9 @@ class VkModel(BaseModel):
 
 class YtModel(BaseModel):
     enabled: bool = True
+class YtModel(BaseModel):
+    enabled: bool = True
+    cookiefile_path: str = ""
 
 
 class YamModel(BaseModel):
